@@ -1,11 +1,24 @@
 <template>
   <q-page class="row q-pt-xl">
     <div class="full-width q-px-xl">
-      <div class="q-mb-xl">
-        <q-input v-model="tempData.name" label="姓名" />
-        <q-input v-model="tempData.age" label="年齡" />
-        <q-btn color="primary" class="q-mt-md">新增</q-btn>
-      </div>
+      <q-form class="q-mb-xl" @submit.prevent.stop="addData">
+        <q-input
+          v-model="tempData.name"
+          label="姓名"
+          lazy-rules
+          :rules="nameRules"
+          required
+        />
+        <q-input
+          v-model.number="tempData.age"
+          label="年齡"
+          type="number"
+          lazy-rules
+          :rules="ageRules"
+          required
+        />
+        <q-btn type="submit" color="primary" class="q-mt-md">新增</q-btn>
+      </q-form>
 
       <q-table
         flat
@@ -73,25 +86,55 @@
           </div>
         </template>
       </q-table>
+
+      <q-dialog v-model="editModalVisible" persistent>
+          <q-card style="min-width: 350px">
+            <q-card-section>
+              <div class="text-h6">更新資料</div>
+            </q-card-section>
+            <q-form class="q-mb-xl" @submit.prevent.stop="patchData">
+              <q-card-section class="q-pt-none">
+                <q-input
+                  v-model="editData.name"
+                  label="姓名"
+                  lazy-rules
+                  :rules="nameRules"
+                  required
+                />
+                <q-input
+                  v-model.number="editData.age"
+                  label="年齡"
+                  type="number"
+                  lazy-rules
+                  :rules="ageRules"
+                  required
+                />
+              </q-card-section>
+              <q-card-actions align="right" class="text-primary">
+                <q-btn flat label="取消" v-close-popup />
+                <q-btn type="submit" flat label="更新" v-close-popup />
+              </q-card-actions>
+            </q-form>
+          </q-card>
+        
+      </q-dialog>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
-import { QTableProps } from 'quasar';
-import { ref } from 'vue';
+import axios from 'axios'
+import { useQuasar, QTableProps } from 'quasar'
+import { ref, onMounted } from 'vue'
+
 interface btnType {
   label: string;
   icon: string;
   status: string;
 }
-const blockData = ref([
-  {
-    name: 'test',
-    age: 25,
-  },
-]);
+
+const $q = useQuasar()
+const blockData = ref([])
 const tableConfig = ref([
   {
     label: '姓名',
@@ -105,7 +148,16 @@ const tableConfig = ref([
     field: 'age',
     align: 'left',
   },
-]);
+])
+
+const nameRules = [
+  val => (val && val.length > 0) || '請輸入姓名'
+]
+
+const ageRules = [
+  val => !isNaN(val) || '請輸入年齡'
+]
+
 const tableButtons = ref([
   {
     label: '編輯',
@@ -117,15 +169,112 @@ const tableButtons = ref([
     icon: 'delete',
     status: 'delete',
   },
-]);
+])
 
 const tempData = ref({
   name: '',
   age: '',
-});
+})
+
+const editData = ref()
+const editModalVisible = ref(false)
+
 function handleClickOption(btn, data) {
-  // ...
+  switch (btn.status) {
+    case 'edit':
+      editData.value = JSON.parse(JSON.stringify(data))
+      editModalVisible.value = true
+      break
+    case 'delete':
+      deleteData(data)
+      break
+  }
 }
+
+async function getData () {
+  try {
+    const res = await axios.get('https://dahua.metcfire.com.tw/api/CRUDTest/a')
+    blockData.value = res.data
+  } catch {
+    $q.notify({
+      message: '取得資料錯誤',
+    })
+  }
+}
+
+async function addData () {
+  try {
+    const res = await axios.post('https://dahua.metcfire.com.tw/api/CRUDTest', tempData.value)
+
+    if (res.data) {
+      getData()
+      $q.notify({
+        message: '新增成功',
+      })
+    } else {
+      $q.notify({
+        message: '新增失敗',
+      })
+    }
+  } catch (err) {
+    $q.notify({
+      message: '新增失敗',
+    })
+  }
+}
+
+async function patchData () {
+  try {
+    const res = await axios.patch('https://dahua.metcfire.com.tw/api/CRUDTest', editData.value)
+
+    if (res.data) {
+      getData()
+      $q.notify({
+        message: '更新成功',
+      })
+    } else {
+      $q.notify({
+        message: '更新失敗',
+      })
+    }
+  } catch (err) {
+    $q.notify({
+      message: '更新失敗',
+    })
+  }
+}
+
+function deleteData (data) {
+  $q.dialog({
+    title: '提示',
+    message: '是否確定刪除該筆資料？',
+    cancel: true,
+    persistent: true
+  }).onOk(async () => {
+    try {
+      const res = await axios.delete(`https://dahua.metcfire.com.tw/api/CRUDTest/${data.id}`)
+
+      if (res.data) {
+        getData()
+        $q.notify({
+          message: '移除成功',
+        })
+      } else {
+        $q.notify({
+          message: '移除失敗',
+        })
+      }
+    } catch (err) {
+      $q.notify({
+        message: '移除失敗',
+      })
+    }
+  })
+}
+
+onMounted(() => {
+  getData()
+})
 </script>
 
 <style lang="scss" scoped>
