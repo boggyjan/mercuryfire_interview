@@ -123,9 +123,9 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios'
 import { useQuasar, QTableProps } from 'quasar'
 import { ref, onMounted } from 'vue'
+import { api } from 'boot/axios'
 
 interface btnType {
   label: string;
@@ -158,7 +158,7 @@ const ageRules = [
   val => !isNaN(val) || '請輸入年齡'
 ]
 
-const tableButtons = ref([
+const tableButtons = ref<btnType[]>([
   {
     label: '編輯',
     icon: 'edit',
@@ -193,7 +193,7 @@ function handleClickOption(btn, data) {
 
 async function getData () {
   try {
-    const res = await axios.get('https://dahua.metcfire.com.tw/api/CRUDTest/a')
+    const res = await api('api/CRUDTest/a')
     blockData.value = res.data
   } catch {
     $q.notify({
@@ -204,7 +204,7 @@ async function getData () {
 
 async function addData () {
   try {
-    const res = await axios.post('https://dahua.metcfire.com.tw/api/CRUDTest', tempData.value)
+    const res = await api.post('api/CRUDTest', tempData.value)
 
     if (res.data) {
       getData()
@@ -225,7 +225,7 @@ async function addData () {
 
 async function patchData () {
   try {
-    const res = await axios.patch('https://dahua.metcfire.com.tw/api/CRUDTest', editData.value)
+    const res = await api.patch('api/CRUDTest', editData.value)
 
     if (res.data) {
       getData()
@@ -249,10 +249,18 @@ function deleteData (data) {
     title: '提示',
     message: '是否確定刪除該筆資料？',
     cancel: true,
-    persistent: true
+    persistent: true,
+    ok: {
+      push: true
+    },
+    cancel: {
+      push: true,
+      color: 'green',
+      label: '取消'
+    }
   }).onOk(async () => {
     try {
-      const res = await axios.delete(`https://dahua.metcfire.com.tw/api/CRUDTest/${data.id}`)
+      const res = await api.delete(`api/CRUDTest/${data.id}`)
 
       if (res.data) {
         getData()
